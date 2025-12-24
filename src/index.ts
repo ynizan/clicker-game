@@ -603,6 +603,29 @@ export default {
 };
 
 async function handleMCP(request: Request): Promise<Response> {
+  // CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      }
+    });
+  }
+
+  // Only accept POST requests
+  if (request.method !== 'POST') {
+    return new Response('MCP endpoint requires POST request', {
+      status: 405,
+      headers: {
+        'Allow': 'POST, OPTIONS',
+        'Content-Type': 'text/plain'
+      }
+    });
+  }
+
   const server = new McpServer({ name: "startup-hustle", version: "1.0.0" });
 
   server.resource(
