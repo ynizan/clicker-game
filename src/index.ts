@@ -759,11 +759,74 @@ async function handleMCP(request: Request): Promise<Response> {
     }
   );
 
-  const body = await request.json() as { method?: string; id?: number | string };
+  const body = await request.json() as {
+    jsonrpc?: string;
+    id?: number | string;
+    method?: string;
+    params?: any;
+  };
 
-  if (body.method === 'tools/list') {
-    const requestId = body.id || 1;
+  const method = body.method;
+  const requestId = body.id;
 
+  // Helper to create JSON-RPC response
+  const jsonRpcResponse = (result: any) => {
+    return new Response(JSON.stringify({
+      jsonrpc: "2.0",
+      id: requestId,
+      result
+    }), {
+      headers: { "Content-Type": "application/json" }
+    });
+  };
+
+  // Helper for notifications (no response body needed, but return empty object)
+  const notificationResponse = () => {
+    return new Response(JSON.stringify({}), {
+      headers: { "Content-Type": "application/json" }
+    });
+  };
+
+  // === INITIALIZE ===
+  if (method === 'initialize') {
+    return jsonRpcResponse({
+      protocolVersion: "2024-11-05",
+      capabilities: {
+        tools: {}
+      },
+      serverInfo: {
+        name: "Startup Hustle",
+        version: "1.0.0"
+      }
+    });
+  }
+
+  // === NOTIFICATIONS (no id, no response required) ===
+  if (method === 'notifications/initialized') {
+    return notificationResponse();
+  }
+
+  // === PING ===
+  if (method === 'ping') {
+    return jsonRpcResponse({});
+  }
+
+  // === RESOURCES/LIST ===
+  if (method === 'resources/list') {
+    return jsonRpcResponse({
+      resources: []
+    });
+  }
+
+  // === PROMPTS/LIST ===
+  if (method === 'prompts/list') {
+    return jsonRpcResponse({
+      prompts: []
+    });
+  }
+
+  // === TOOLS/LIST ===
+  if (method === 'tools/list') {
     const tools = [
       {
         name: "click",
@@ -833,37 +896,127 @@ async function handleMCP(request: Request): Promise<Response> {
       }
     ];
 
-    const response = {
-      jsonrpc: "2.0",
-      id: requestId,
-      result: { tools }
-    };
-
-    return new Response(JSON.stringify(response), {
-      headers: { "Content-Type": "application/json" }
-    });
+    return jsonRpcResponse({ tools });
   }
 
-  if (body.method === 'initialize') {
-    const response = {
-      jsonrpc: "2.0",
-      id: body.id || 1,
-      result: {
-        protocolVersion: "2024-11-05",
-        capabilities: {
-          tools: {}
-        },
-        serverInfo: {
-          name: "Startup Hustle",
-          version: "1.0.0"
+  // === TOOLS/CALL ===
+  if (method === 'tools/call') {
+    const toolName = body.params?.name;
+    const sessionId = body.params?.sessionId || 'default';
+    const state = getState(sessionId);
+
+    let result: { content: Array<{ type: string; text: string }>; structuredContent?: GameState };
+
+    switch (toolName) {
+      case 'click':
+        state.clicks += state.multiplier;
+        state.lastUpdated = Date.now();
+        result = {
+          content: [{ type: "text", text: `Hustled! Total: $${state.clicks}` }],
+          structuredContent: state
+        };
+        break;
+
+      case 'auto_click':
+        if (state.autoClickerLevel > 0) {
+          state.clicks += state.autoClickerLevel;
+          state.lastUpdated = Date.now();
         }
-      }
-    };
+        result = {
+          content: [{ type: "text", text: `Team earned! Total: $${state.clicks}` }],
+          structuredContent: state
+        };
+        break;
 
-    return new Response(JSON.stringify(response), {
-      headers: { "Content-Type": "application/json" }
-    });
+      case 'buy_multiplier': {
+        const baseCosts = [15, 75, 300, 1000, 5000, 25000, 100000, 500000];
+        const idx = Math.min(state.multiplier - 1, baseCosts.length - 1);
+        const cost = Math.floor(baseCosts[idx] * Math.pow(1.5, state.multiplier - 1));
+
+        if (state.clicks >= cost) {
+          state.clicks -= cost;
+          state.multiplier += 1;
+          state.lastUpdated = Date.now();
+          result = {
+            content: [{ type: "text", text: `Upgraded! Multiplier is now ${state.multiplier}x` }],
+            structuredContent: state
+          };
+        } else {
+          result = {
+            content: [{ type: "text", text: `Not enough funding! Need $${cost}` }],
+            structuredContent: state
+          };
+        }
+        break;
+      }
+
+      case 'buy_auto_clicker': {
+        const baseCosts = [20, 150, 800, 4000, 20000, 100000];
+        const idx = Math.min(state.autoClickerLevel, baseCosts.length - 1);
+        const cost = Math.floor(baseCosts[idx] * Math.pow(1.5, state.autoClickerLevel));
+
+        if (state.clicks >= cost) {
+          state.clicks -= cost;
+          state.autoClickerLevel += 1;
+          state.lastUpdated = Date.now();
+          result = {
+            content: [{ type: "text", text: `New hire! Team size: ${state.autoClickerLevel}` }],
+            structuredContent: state
+          };
+        } else {
+          result = {
+            content: [{ type: "text", text: `Not enough funding! Need $${cost}` }],
+            structuredContent: state
+          };
+        }
+        break;
+      }
+
+      case 'get_game_state':
+        result = {
+          content: [{
+            type: "text",
+            text: `Funding: $${state.clicks}, Multiplier: ${state.multiplier}x, Team: ${state.autoClickerLevel}`
+          }],
+          structuredContent: state
+        };
+        break;
+
+      case 'reset_game':
+        gameStates.set(sessionId, { ...defaultState });
+        result = {
+          content: [{ type: "text", text: "Pivoted! Starting a new venture from the garage." }],
+          structuredContent: defaultState
+        };
+        break;
+
+      default:
+        return new Response(JSON.stringify({
+          jsonrpc: "2.0",
+          id: requestId,
+          error: {
+            code: -32601,
+            message: `Unknown tool: ${toolName}`
+          }
+        }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" }
+        });
+    }
+
+    return jsonRpcResponse(result);
   }
 
-  return new Response('OK', { status: 200 });
+  // === UNKNOWN METHOD ===
+  return new Response(JSON.stringify({
+    jsonrpc: "2.0",
+    id: requestId,
+    error: {
+      code: -32601,
+      message: `Method not found: ${method}`
+    }
+  }), {
+    status: 400,
+    headers: { "Content-Type": "application/json" }
+  });
 }
