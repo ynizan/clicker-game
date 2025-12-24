@@ -844,5 +844,26 @@ async function handleMCP(request: Request): Promise<Response> {
     });
   }
 
+  if (body.method === 'initialize') {
+    const response = {
+      jsonrpc: "2.0",
+      id: body.id || 1,
+      result: {
+        protocolVersion: "2024-11-05",
+        capabilities: {
+          tools: {}
+        },
+        serverInfo: {
+          name: "Startup Hustle",
+          version: "1.0.0"
+        }
+      }
+    };
+
+    return new Response(JSON.stringify(response), {
+      headers: { "Content-Type": "application/json" }
+    });
+  }
+
   return new Response('OK', { status: 200 });
 }
