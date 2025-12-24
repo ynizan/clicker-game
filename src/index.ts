@@ -308,23 +308,23 @@ const widgetHtml = `
     };
 
     const upgrades = [
-      { name: "Coffee Machine", emoji: "coffee", cost: 50 },
-      { name: "Standing Desk", emoji: "desk", cost: 200 },
-      { name: "Pitch Deck", emoji: "chart", cost: 500 },
-      { name: "Co-founder", emoji: "handshake", cost: 2000 },
-      { name: "Seed Round", emoji: "seed", cost: 10000 },
-      { name: "Series A", emoji: "trending", cost: 50000 },
-      { name: "AI Pivot", emoji: "robot", cost: 200000 },
-      { name: "Unicorn", emoji: "unicorn", cost: 1000000 }
+      { name: "Coffee Machine", emoji: "coffee", cost: 15 },
+      { name: "Standing Desk", emoji: "desk", cost: 75 },
+      { name: "Pitch Deck", emoji: "chart", cost: 300 },
+      { name: "Co-founder", emoji: "handshake", cost: 1000 },
+      { name: "Seed Round", emoji: "seed", cost: 5000 },
+      { name: "Series A", emoji: "trending", cost: 25000 },
+      { name: "AI Pivot", emoji: "robot", cost: 100000 },
+      { name: "Unicorn", emoji: "unicorn", cost: 500000 }
     ];
 
     const hires = [
-      { name: "Hire Intern", emoji: "person", cost: 100 },
-      { name: "Junior Dev", emoji: "laptop", cost: 500 },
-      { name: "Growth Hacker", emoji: "phone", cost: 2500 },
-      { name: "VP of Vibes", emoji: "sparkle", cost: 10000 },
-      { name: "Board Member", emoji: "tophat", cost: 50000 },
-      { name: "AI Agent", emoji: "robot", cost: 250000 }
+      { name: "Hire Intern", emoji: "person", cost: 20 },
+      { name: "Junior Dev", emoji: "laptop", cost: 150 },
+      { name: "Growth Hacker", emoji: "phone", cost: 800 },
+      { name: "VP of Vibes", emoji: "sparkle", cost: 4000 },
+      { name: "Board Member", emoji: "tophat", cost: 20000 },
+      { name: "AI Agent", emoji: "robot", cost: 100000 }
     ];
 
     const stages = [
@@ -377,14 +377,14 @@ const widgetHtml = `
       document.getElementById('perClick').textContent = '+' + formatMoney(state.multiplier) + ' per click';
 
       const upgrade = getCurrentUpgrade();
-      const upgradeCost = upgrade.cost * Math.pow(2, state.multiplier - 1);
+      const upgradeCost = Math.floor(upgrade.cost * Math.pow(1.5, state.multiplier - 1));
       document.getElementById('upgradeName').textContent = upgrade.name;
       document.getElementById('upgradeCost').textContent = formatMoney(upgradeCost);
       document.getElementById('upgradeEmoji').textContent = upgrade.emoji;
       document.getElementById('upgradeBtn').disabled = state.clicks < upgradeCost;
 
       const hire = getCurrentHire();
-      const hireCost = hire.cost * Math.pow(2, state.autoClickerLevel);
+      const hireCost = Math.floor(hire.cost * Math.pow(1.5, state.autoClickerLevel));
       document.getElementById('hireName').textContent = hire.name;
       document.getElementById('hireCost').textContent = formatMoney(hireCost);
       document.getElementById('hireEmoji').textContent = hire.emoji;
@@ -410,7 +410,7 @@ const widgetHtml = `
 
     function localBuyMultiplier() {
       const upgrade = getCurrentUpgrade();
-      const cost = upgrade.cost * Math.pow(2, state.multiplier - 1);
+      const cost = Math.floor(upgrade.cost * Math.pow(1.5, state.multiplier - 1));
       if (state.clicks >= cost) {
         state.clicks -= cost;
         state.multiplier += 1;
@@ -420,7 +420,7 @@ const widgetHtml = `
 
     function localBuyAutoClicker() {
       const hire = getCurrentHire();
-      const cost = hire.cost * Math.pow(2, state.autoClickerLevel);
+      const cost = Math.floor(hire.cost * Math.pow(1.5, state.autoClickerLevel));
       if (state.clicks >= cost) {
         state.clicks -= cost;
         state.autoClickerLevel += 1;
@@ -653,7 +653,9 @@ async function handleMCP(request: Request): Promise<Response> {
     async () => {
       const userId = "default";
       const state = getState(userId);
-      const cost = 50 * Math.pow(2, state.multiplier - 1);
+      const baseCosts = [15, 75, 300, 1000, 5000, 25000, 100000, 500000];
+      const idx = Math.min(state.multiplier - 1, baseCosts.length - 1);
+      const cost = Math.floor(baseCosts[idx] * Math.pow(1.5, state.multiplier - 1));
 
       if (state.clicks >= cost) {
         state.clicks -= cost;
@@ -678,7 +680,9 @@ async function handleMCP(request: Request): Promise<Response> {
     async () => {
       const userId = "default";
       const state = getState(userId);
-      const cost = 100 * Math.pow(2, state.autoClickerLevel);
+      const baseCosts = [20, 150, 800, 4000, 20000, 100000];
+      const idx = Math.min(state.autoClickerLevel, baseCosts.length - 1);
+      const cost = Math.floor(baseCosts[idx] * Math.pow(1.5, state.autoClickerLevel));
 
       if (state.clicks >= cost) {
         state.clicks -= cost;
