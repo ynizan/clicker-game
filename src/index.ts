@@ -141,27 +141,70 @@ const widgetHtml = `
       document.getElementById('autoClickerBtn').disabled = state.clicks < autoCost;
     }
 
-    async function click() {
-      const result = await openai.callTool('click', {});
-      if (result?.structuredContent) {
-        state = result.structuredContent;
+    // Local fallback functions when openai context is not available
+    function localClick() {
+      state.clicks += state.multiplier;
+      updateUI();
+    }
+
+    function localBuyMultiplier() {
+      const cost = 50 * Math.pow(2, state.multiplier - 1);
+      if (state.clicks >= cost) {
+        state.clicks -= cost;
+        state.multiplier += 1;
         updateUI();
+      }
+    }
+
+    function localBuyAutoClicker() {
+      const cost = 100 * Math.pow(2, state.autoClickerLevel);
+      if (state.clicks >= cost) {
+        state.clicks -= cost;
+        state.autoClickerLevel += 1;
+        updateUI();
+      }
+    }
+
+    function localAutoClick() {
+      if (state.autoClickerLevel > 0) {
+        state.clicks += state.autoClickerLevel;
+        updateUI();
+      }
+    }
+
+    async function click() {
+      if (openai?.callTool) {
+        const result = await openai.callTool('click', {});
+        if (result?.structuredContent) {
+          state = result.structuredContent;
+          updateUI();
+        }
+      } else {
+        localClick();
       }
     }
 
     async function buyMultiplier() {
-      const result = await openai.callTool('buy_multiplier', {});
-      if (result?.structuredContent) {
-        state = result.structuredContent;
-        updateUI();
+      if (openai?.callTool) {
+        const result = await openai.callTool('buy_multiplier', {});
+        if (result?.structuredContent) {
+          state = result.structuredContent;
+          updateUI();
+        }
+      } else {
+        localBuyMultiplier();
       }
     }
 
     async function buyAutoClicker() {
-      const result = await openai.callTool('buy_auto_clicker', {});
-      if (result?.structuredContent) {
-        state = result.structuredContent;
-        updateUI();
+      if (openai?.callTool) {
+        const result = await openai.callTool('buy_auto_clicker', {});
+        if (result?.structuredContent) {
+          state = result.structuredContent;
+          updateUI();
+        }
+      } else {
+        localBuyAutoClicker();
       }
     }
 
@@ -171,10 +214,14 @@ const widgetHtml = `
 
     setInterval(async () => {
       if (state.autoClickerLevel > 0) {
-        const result = await openai.callTool('auto_click', {});
-        if (result?.structuredContent) {
-          state = result.structuredContent;
-          updateUI();
+        if (openai?.callTool) {
+          const result = await openai.callTool('auto_click', {});
+          if (result?.structuredContent) {
+            state = result.structuredContent;
+            updateUI();
+          }
+        } else {
+          localAutoClick();
         }
       }
     }, 1000);
