@@ -80,3 +80,7 @@ npm run deploy
 ## License
 
 MIT
+
+
+## OpenAI App Submission
+Submitted to ChatGPT App Directory
