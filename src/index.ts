@@ -565,6 +565,11 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    // Demo video redirect
+    if (url.pathname === '/demo.mp4' || url.pathname === '/demo') {
+      return Response.redirect('https://pub-34cbbd41484347aaafece7f5d79f3d0c.r2.dev/Demo.mp4', 302);
+    }
+
     if (url.pathname === '/.well-known/openai-apps-challenge') {
       return new Response(env.OPENAI_APPS_VERIFICATION_TOKEN || '', {
         headers: { 'Content-Type': 'text/plain' }
