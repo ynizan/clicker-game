@@ -1,92 +1,72 @@
-# ChatGPT Clicker Game - Complete Build & Submit Guide
+# Startup Hustle - ChatGPT App
+
+Click your way from garage to unicorn! A satirical startup journey clicker game.
 
 ## Overview
 
-This package contains three instruction sets for building and publishing a clicker game as a ChatGPT App:
+Startup Hustle is an interactive clicker game that runs as a ChatGPT App. Build your startup empire by hustling, hiring team members, and purchasing upgrades.
 
-| Document | Who Uses It | Purpose |
-|----------|-------------|---------|
-| `1-claude-code-build-instructions.md` | Claude Code | Build the MCP server and game widget |
-| `2-cloudflare-setup-instructions.md` | AI Browser | Deploy to Cloudflare Workers |
-| `3-chatgpt-submission-instructions.md` | AI Browser | Submit to ChatGPT App Directory |
+## Features
 
-## Quick Answers
+- **Hustle Button**: Click to earn startup dollars
+- **Upgrade System**: Purchase startup upgrades (Coffee Machine, Standing Desk, Pitch Deck, Co-founder, Seed Round, Series A, AI Pivot, Unicorn Status)
+- **Hire Team**: Build your team (Intern, Junior Dev, Growth Hacker, VP of Vibes, Board Member, AI Agent)
+- **Stage Progression**: Watch your startup grow from Garage to Coworking to Small Office to HQ Campus to Unicorn to the Moon!
+- **Currency Tiers**: Progress through Dollars, Thousands, Millions, and Unicorn Bucks
 
-### Do I need a custom domain?
-**No.** Cloudflare Workers provides a free `*.workers.dev` subdomain with HTTPS. This works perfectly for ChatGPT Apps.
-
-### What's the architecture?
+## Architecture
 
 ```
-ChatGPT ←→ Your MCP Server (Cloudflare Worker) ←→ Game State
-              ↓
+ChatGPT <-> MCP Server (Cloudflare Worker) <-> Game State
+              |
          Widget (iframe)
-```
-
-### What does the app do?
-- Click button to earn points
-- Buy multiplier upgrades (2x, 3x, etc.)
-- Buy auto-clickers that earn passively
-- All state managed server-side
-
-## Workflow
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 1: Claude Code builds the app                              │
-│   - MCP server with game logic                                  │
-│   - Widget HTML for UI                                          │
-│   - Privacy policy & terms pages                                │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 2: AI Browser deploys to Cloudflare                        │
-│   - Create Cloudflare account (or use existing)                 │
-│   - Deploy worker                                               │
-│   - Get your *.workers.dev URL                                  │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 3: Test in ChatGPT Developer Mode                          │
-│   - Add as connector                                            │
-│   - Verify widget loads                                         │
-│   - Test all game functions                                     │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│ Step 4: AI Browser submits to ChatGPT                           │
-│   - Create assets (icon, screenshots, video)                    │
-│   - Fill submission form                                        │
-│   - Complete domain verification                                │
-│   - Submit for review                                           │
-└─────────────────────────────────────────────────────────────────┘
 ```
 
 ## Key URLs After Deployment
 
 | Purpose | URL Pattern |
 |---------|-------------|
-| MCP Endpoint | `https://chatgpt-clicker-game.<account>.workers.dev/mcp` |
-| Privacy Policy | `https://chatgpt-clicker-game.<account>.workers.dev/privacy-policy` |
-| Terms | `https://chatgpt-clicker-game.<account>.workers.dev/terms` |
-| Verification | `https://chatgpt-clicker-game.<account>.workers.dev/.well-known/openai-apps-challenge` |
+| MCP Endpoint | `https://your-worker.workers.dev/mcp` |
+| Privacy Policy | `https://your-worker.workers.dev/privacy-policy` |
+| Terms | `https://your-worker.workers.dev/terms` |
+| Widget | `https://your-worker.workers.dev/widget` |
 
-## Requirements Summary
+## Development
 
-### Technical
-- Cloudflare account (free)
-- OpenAI Platform account (verified)
-- HTTPS endpoint (provided by Cloudflare)
+```bash
+# Install dependencies
+npm install
 
-### Assets for Submission
-- SVG icon (64x64)
-- Screenshots (706px wide, 400-860px height)
-- Demo video (hosted on same domain)
-- Privacy policy page
-- Terms of service page
+# Run locally
+npm run dev
 
-### No Custom Domain Needed
-The free `*.workers.dev` subdomain satisfies all requirements.
+# Deploy to Cloudflare
+npm run deploy
+```
+
+## Game Mechanics
+
+### Upgrades (Multipliers)
+| Name | Cost | Effect |
+|------|------|--------|
+| Coffee Machine | $50 | 2x earnings |
+| Standing Desk | $200 | 3x earnings |
+| Pitch Deck | $500 | 5x earnings |
+| Co-founder | $2,000 | 8x earnings |
+| Seed Round | $10,000 | 15x earnings |
+| Series A | $50,000 | 30x earnings |
+| AI Pivot | $200,000 | 50x earnings |
+| Unicorn Status | $1,000,000 | 100x earnings |
+
+### Team Members (Passive Income)
+| Name | Cost | Income |
+|------|------|--------|
+| Intern | $100 | $1/s |
+| Junior Dev | $500 | $5/s |
+| Growth Hacker | $2,500 | $20/s |
+| VP of Vibes | $10,000 | $50/s |
+| Board Member | $50,000 | $150/s |
+| AI Agent | $250,000 | $500/s |
 
 ## Cost
 
@@ -94,23 +74,9 @@ The free `*.workers.dev` subdomain satisfies all requirements.
 |---------|------|
 | Cloudflare Workers | Free (100k requests/day) |
 | OpenAI App Submission | Free |
-| Custom Domain | Not required |
 
 **Total: $0**
 
-## Timeline
+## License
 
-1. **Build** (Claude Code): ~30 minutes
-2. **Deploy** (Cloudflare): ~15 minutes  
-3. **Test**: ~30 minutes
-4. **Submit**: ~1 hour (including assets)
-5. **Review**: Days to weeks (OpenAI's process)
-
-## Next Steps
-
-1. Give `1-claude-code-build-instructions.md` to Claude Code
-2. Give `2-cloudflare-setup-instructions.md` to your AI browser
-3. Test the deployed app in ChatGPT Developer Mode
-4. Give `3-chatgpt-submission-instructions.md` to your AI browser
-
-Good luck with your ChatGPT App! 🎮
+MIT
