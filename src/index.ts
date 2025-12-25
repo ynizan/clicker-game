@@ -23,6 +23,45 @@ function getState(userId: string): GameState {
   return gameStates.get(userId)!;
 }
 
+// Helper functions for costs, names, and formatting
+function getUpgradeCost(multiplierLevel: number): number {
+  const baseCosts = [50, 200, 500, 2000, 10000, 50000, 200000, 1000000];
+  const index = Math.min(multiplierLevel - 1, baseCosts.length - 1);
+  return baseCosts[index];
+}
+
+function getHireCost(autoClickerLevel: number): number {
+  const baseCosts = [100, 500, 2500, 10000, 50000, 250000];
+  const index = Math.min(autoClickerLevel, baseCosts.length - 1);
+  return baseCosts[index];
+}
+
+function getUpgradeName(level: number): string {
+  const names = ["Coffee Machine", "Standing Desk", "Pitch Deck", "Co-founder", "Seed Round", "Series A", "AI Pivot", "Unicorn Status"];
+  return names[Math.min(level - 1, names.length - 1)] || "Max Level";
+}
+
+function getHireName(level: number): string {
+  const names = ["Intern", "Junior Dev", "Growth Hacker", "VP of Vibes", "Board Member", "AI Agent"];
+  return names[Math.min(level, names.length - 1)] || "Max Level";
+}
+
+function formatMoney(amount: number): string {
+  if (amount >= 1000000000) return '$' + (amount / 1000000000).toFixed(1) + 'B';
+  if (amount >= 1000000) return '$' + (amount / 1000000).toFixed(1) + 'M';
+  if (amount >= 1000) return '$' + (amount / 1000).toFixed(1) + 'K';
+  return '$' + amount;
+}
+
+function getStage(amount: number): string {
+  if (amount >= 100000000) return "🌙 To The Moon";
+  if (amount >= 10000000) return "🦄 Unicorn!";
+  if (amount >= 500000) return "🏛️ HQ Campus";
+  if (amount >= 50000) return "🏬 Small Office";
+  if (amount >= 1000) return "🏢 Coworking";
+  return "📍 The Garage";
+}
+
 const widgetHtml = `
 <!DOCTYPE html>
 <html>
@@ -792,7 +831,8 @@ async function handleMCP(request: Request): Promise<Response> {
     return jsonRpcResponse({
       protocolVersion: "2024-11-05",
       capabilities: {
-        tools: {}
+        tools: {},
+        resources: {}
       },
       serverInfo: {
         name: "Startup Hustle",
@@ -814,8 +854,33 @@ async function handleMCP(request: Request): Promise<Response> {
   // === RESOURCES/LIST ===
   if (method === 'resources/list') {
     return jsonRpcResponse({
-      resources: []
+      resources: [
+        {
+          uri: "ui://widget/game.html",
+          name: "Startup Hustle Game Widget",
+          mimeType: "text/html+skybridge"
+        }
+      ]
     });
+  }
+
+  // === RESOURCES/READ ===
+  if (method === 'resources/read') {
+    const uri = body.params?.uri;
+
+    if (uri === 'ui://widget/game.html') {
+      return jsonRpcResponse({
+        contents: [
+          {
+            uri: "ui://widget/game.html",
+            mimeType: "text/html+skybridge",
+            text: widgetHtml
+          }
+        ]
+      });
+    }
+
+    return jsonRpcResponse({ contents: [] });
   }
 
   // === PROMPTS/LIST ===
@@ -905,15 +970,16 @@ async function handleMCP(request: Request): Promise<Response> {
     const sessionId = body.params?.sessionId || 'default';
     const state = getState(sessionId);
 
-    let result: { content: Array<{ type: string; text: string }>; structuredContent?: GameState };
+    let result: { content: Array<{ type: string; text: string }>; structuredContent?: any; _meta?: { "openai/outputTemplate": string } };
 
     switch (toolName) {
       case 'click':
         state.clicks += state.multiplier;
         state.lastUpdated = Date.now();
         result = {
-          content: [{ type: "text", text: `Hustled! Total: $${state.clicks}` }],
-          structuredContent: state
+          content: [{ type: "text", text: `Hustled! Total: ${formatMoney(state.clicks)}` }],
+          structuredContent: state,
+          _meta: { "openai/outputTemplate": "ui://widget/game.html" }
         };
         break;
 
@@ -923,70 +989,109 @@ async function handleMCP(request: Request): Promise<Response> {
           state.lastUpdated = Date.now();
         }
         result = {
-          content: [{ type: "text", text: `Team earned! Total: $${state.clicks}` }],
-          structuredContent: state
+          content: [{ type: "text", text: `Team earned! Total: ${formatMoney(state.clicks)}` }],
+          structuredContent: state,
+          _meta: { "openai/outputTemplate": "ui://widget/game.html" }
         };
         break;
 
       case 'buy_multiplier': {
-        const baseCosts = [15, 75, 300, 1000, 5000, 25000, 100000, 500000];
-        const idx = Math.min(state.multiplier - 1, baseCosts.length - 1);
-        const cost = Math.floor(baseCosts[idx] * Math.pow(1.5, state.multiplier - 1));
+        const cost = getUpgradeCost(state.multiplier);
 
-        if (state.clicks >= cost) {
+        if (state.clicks < cost) {
+          const needed = cost - state.clicks;
+          result = {
+            content: [{
+              type: "text",
+              text: `Not enough funding! You need ${formatMoney(cost)} but only have ${formatMoney(state.clicks)}. Hustle ${formatMoney(needed)} more!`
+            }]
+          };
+        } else {
           state.clicks -= cost;
           state.multiplier += 1;
           state.lastUpdated = Date.now();
+
+          const nextCost = getUpgradeCost(state.multiplier);
           result = {
-            content: [{ type: "text", text: `Upgraded! Multiplier is now ${state.multiplier}x` }],
-            structuredContent: state
-          };
-        } else {
-          result = {
-            content: [{ type: "text", text: `Not enough funding! Need $${cost}` }],
-            structuredContent: state
+            content: [{
+              type: "text",
+              text: `🎉 Purchased ${getUpgradeName(state.multiplier - 1)}! Multiplier is now ${state.multiplier}x. Next upgrade: ${getUpgradeName(state.multiplier)} costs ${formatMoney(nextCost)}.`
+            }],
+            structuredContent: { ...state, nextUpgradeCost: nextCost },
+            _meta: { "openai/outputTemplate": "ui://widget/game.html" }
           };
         }
         break;
       }
 
       case 'buy_auto_clicker': {
-        const baseCosts = [20, 150, 800, 4000, 20000, 100000];
-        const idx = Math.min(state.autoClickerLevel, baseCosts.length - 1);
-        const cost = Math.floor(baseCosts[idx] * Math.pow(1.5, state.autoClickerLevel));
+        const cost = getHireCost(state.autoClickerLevel);
 
-        if (state.clicks >= cost) {
+        if (state.clicks < cost) {
+          const needed = cost - state.clicks;
+          result = {
+            content: [{
+              type: "text",
+              text: `Not enough funding! You need ${formatMoney(cost)} but only have ${formatMoney(state.clicks)}. Hustle ${formatMoney(needed)} more!`
+            }]
+          };
+        } else {
           state.clicks -= cost;
           state.autoClickerLevel += 1;
           state.lastUpdated = Date.now();
+
+          const nextCost = getHireCost(state.autoClickerLevel);
           result = {
-            content: [{ type: "text", text: `New hire! Team size: ${state.autoClickerLevel}` }],
-            structuredContent: state
-          };
-        } else {
-          result = {
-            content: [{ type: "text", text: `Not enough funding! Need $${cost}` }],
-            structuredContent: state
+            content: [{
+              type: "text",
+              text: `🎉 Hired ${getHireName(state.autoClickerLevel - 1)}! Team size is now ${state.autoClickerLevel}. Next hire: ${getHireName(state.autoClickerLevel)} costs ${formatMoney(nextCost)}.`
+            }],
+            structuredContent: { ...state, nextHireCost: nextCost },
+            _meta: { "openai/outputTemplate": "ui://widget/game.html" }
           };
         }
         break;
       }
 
-      case 'get_game_state':
+      case 'get_game_state': {
+        const nextUpgradeCost = getUpgradeCost(state.multiplier);
+        const nextHireCost = getHireCost(state.autoClickerLevel);
+
+        const gameState = {
+          funding: state.clicks,
+          fundingFormatted: formatMoney(state.clicks),
+          multiplier: state.multiplier,
+          teamSize: state.autoClickerLevel,
+          passiveIncome: state.autoClickerLevel,
+          stage: getStage(state.clicks),
+          nextUpgrade: {
+            name: getUpgradeName(state.multiplier),
+            cost: nextUpgradeCost,
+            costFormatted: formatMoney(nextUpgradeCost),
+            canAfford: state.clicks >= nextUpgradeCost
+          },
+          nextHire: {
+            name: getHireName(state.autoClickerLevel),
+            cost: nextHireCost,
+            costFormatted: formatMoney(nextHireCost),
+            canAfford: state.clicks >= nextHireCost
+          }
+        };
+
         result = {
-          content: [{
-            type: "text",
-            text: `Funding: $${state.clicks}, Multiplier: ${state.multiplier}x, Team: ${state.autoClickerLevel}`
-          }],
-          structuredContent: state
+          content: [{ type: "text", text: JSON.stringify(gameState, null, 2) }],
+          structuredContent: gameState,
+          _meta: { "openai/outputTemplate": "ui://widget/game.html" }
         };
         break;
+      }
 
       case 'reset_game':
         gameStates.set(sessionId, { ...defaultState });
         result = {
           content: [{ type: "text", text: "Pivoted! Starting a new venture from the garage." }],
-          structuredContent: defaultState
+          structuredContent: defaultState,
+          _meta: { "openai/outputTemplate": "ui://widget/game.html" }
         };
         break;
 
