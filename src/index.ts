@@ -642,6 +642,12 @@ export default {
 };
 
 async function handleMCP(request: Request): Promise<Response> {
+  // Debug: Log all incoming request headers
+  console.log('[handleMCP] Incoming request headers:');
+  request.headers.forEach((value, key) => {
+    console.log(`  ${key}: ${value}`);
+  });
+
   // CORS preflight
   if (request.method === 'OPTIONS') {
     return new Response(null, {
@@ -967,8 +973,30 @@ async function handleMCP(request: Request): Promise<Response> {
   // === TOOLS/CALL ===
   if (method === 'tools/call') {
     const toolName = body.params?.name;
-    const sessionId = body.params?.sessionId || 'default';
+
+    // Debug: Log the full request to understand where sessionId should come from
+    console.log('[tools/call] Full request body:', JSON.stringify(body, null, 2));
+    console.log('[tools/call] params:', JSON.stringify(body.params, null, 2));
+    console.log('[tools/call] params._meta:', JSON.stringify(body.params?._meta, null, 2));
+
+    // Try to get sessionId from multiple locations:
+    // 1. params._meta.sessionId (standard MCP meta field)
+    // 2. params.arguments._meta.sessionId (in case it's nested in arguments)
+    // 3. params.sessionId (fallback)
+    // 4. request headers (X-Session-Id or similar)
+    const sessionId =
+      body.params?._meta?.sessionId ||
+      body.params?.arguments?._meta?.sessionId ||
+      body.params?.sessionId ||
+      request.headers.get('x-session-id') ||
+      request.headers.get('openai-session-id') ||
+      'default';
+
+    console.log('[tools/call] Resolved sessionId:', sessionId);
+    console.log('[tools/call] Tool being called:', toolName);
+
     const state = getState(sessionId);
+    console.log('[tools/call] Current state for session:', JSON.stringify(state));
 
     let result: { content: Array<{ type: string; text: string }>; structuredContent?: any; _meta?: { "openai/outputTemplate": string } };
 
